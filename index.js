@@ -146,103 +146,121 @@ async function msgHandler (client, message) {
                 }
             }
             break
-        case 'tiktok': {
-            if (args.length !== 1) return client.reply(from, 'Maaf, link yang kamu kirim tidak valid', id)
-            const url = args[0]
-            if (!url.match(isUrl) && !url.includes('tiktok.com')) return client.reply(from, 'Maaf, link yang kamu kirim tidak valid', id)
-            await client.sendText(from, '*Scraping Metadata...*')
-            await tiktok(url)
-                .then((videoMeta) => {
-                    const filename = videoMeta.authorMeta.name + '.mp4'
-                    const caps = `*Metadata:*\nUsername: ${videoMeta.authorMeta.name} \nMusic: ${videoMeta.musicMeta.musicName} \nView: ${videoMeta.playCount.toLocaleString()} \nLike: ${videoMeta.diggCount.toLocaleString()} \nComment: ${videoMeta.commentCount.toLocaleString()} \nShare: ${videoMeta.shareCount.toLocaleString()} \nCaption: ${videoMeta.text.trim() ? videoMeta.text : '-'} \n\nDonasi: kamu dapat membantuku beli dimsum dengan menyawer melalui https://saweria.co/donate/yogasakti atau mentrakteer melalui https://trakteer.id/red-emperor \nTerimakasih.`
-                    client.sendFileFromUrl(from, videoMeta.url, filename, videoMeta.NoWaterMark ? caps : `⚠ Video tanpa watermark tidak tersedia. \n\n${caps}`, '', { headers: { 'User-Agent': 'okhttp/4.5.0' } })
-                        .catch(err => console.log('Caught exception: ', err))
-                }).catch(() => {
-                    client.reply(from, 'Gagal mengambil metadata, link yang kamu kirim tidak valid', id)
-                })
-        }
-            break
-        case 'ig':
-        case 'instagram': {
-            if (args.length !== 1) return client.reply(from, 'Maaf, link yang kamu kirim tidak valid', id)
-            const url = args[0]
-            if (!url.match(isUrl) && !url.includes('instagram.com')) return client.reply(from, 'Maaf, link yang kamu kirim tidak valid', id)
-            await client.sendText(from, '*Scraping Metadata...*')
-            instagram(url)
-                .then(async (videoMeta) => {
-                    const content = []
-                    for (let i = 0; i < videoMeta.length; i++) {
-                        await urlShortener(videoMeta[i].video)
-                            .then((result) => {
-                                console.log('Shortlink: ' + result)
-                                content.push(`${i + 1}. ${result}`)
-                            }).catch((err) => {
-                                client.sendText(from, 'Error, ' + err)
-                            })
-                    }
-                    client.sendText(from, `Link Download:\n${content.join('\n')} \n\nDonasi: kamu dapat membantuku beli dimsum dengan menyawer melalui https://saweria.co/donate/yogasakti atau mentrakteer melalui https://trakteer.id/red-emperor \nTerimakasih.`)
-                }).catch((err) => {
-                    if (err == 'Not a video') return client.reply(from, 'Error, tidak ada video di link yang kamu kirim', id)
-                    client.reply(from, 'Error, user private atau link salah', id)
-                })
-        }
-            break
-        case 'twt':
-        case 'twitter': {
-            if (args.length !== 1) return client.reply(from, 'Maaf, link yang kamu kirim tidak valid', id)
-            const url = args[0]
-            if (!url.match(isUrl) & !url.includes('twitter.com') || url.includes('t.co')) return client.reply(from, 'Maaf, url yang kamu kirim tidak valid', id)
-            await client.sendText(from, '*Scraping Metadata...*')
-            twitter(url)
-                .then(async (videoMeta) => {
-                    try {
-                        if (videoMeta.type == 'video') {
-                            const content = videoMeta.variants.filter(x => x.content_type !== 'application/x-mpegURL').sort((a, b) => b.bitrate - a.bitrate)
-                            const result = await urlShortener(content[0].url)
-                            console.log('Shortlink: ' + result)
-                            client.sendFileFromUrl(from, content[0].url, 'TwitterVideo.mp4', `Link Download: ${result} \n\nDonasi: kamu dapat membantuku beli dimsum dengan menyawer melalui https://saweria.co/donate/yogasakti atau mentrakteer melalui https://trakteer.id/red-emperor \nTerimakasih.`)
-                        } else if (videoMeta.type == 'photo') {
-                            for (let i = 0; i < videoMeta.variants.length; i++) {
-                                await client.sendFileFromUrl(from, videoMeta.variants[i], videoMeta.variants[i].split('/media/')[1], '')
-                            }
-                        }
-                    } catch (err) {
-                        client.sendText(from, 'Error, ' + err)
-                    }
-                }).catch(() => {
-                    client.sendText(from, 'Maaf, link tidak valid atau tidak ada video di link yang kamu kirim')
-                })
-        }
-            break
-        case 'fb':
-        case 'facebook': {
-            if (args.length !== 1) return client.reply(from, 'Maaf, link yang kamu kirim tidak valid', id)
-            const url = args[0]
-            if (!url.match(isUrl) && !url.includes('facebook.com')) return client.reply(from, 'Maaf, url yang kamu kirim tidak valid', id)
-            await client.sendText(from, '*Scraping Metadata...*')
-            facebook(url)
-                .then(async (videoMeta) => {
-                    try {
-                        const title = videoMeta.response.title
-                        const thumbnail = videoMeta.response.thumbnail
-                        const links = videoMeta.response.links
-                        const shorts = []
-                        for (let i = 0; i < links.length; i++) {
-                            const shortener = await urlShortener(links[i].url)
-                            console.log('Shortlink: ' + shortener)
-                            links[i].short = shortener
-                            shorts.push(links[i])
-                        }
-                        const link = shorts.map((x) => `${x.resolution} Quality: ${x.short}`)
-                        const caption = `Text: ${title} \nLink Download: \n${link.join('\n')} \n\nDonasi: kamu dapat membantuku beli dimsum dengan menyawer melalui https://saweria.co/donate/yogasakti atau mentrakteer melalui https://trakteer.id/red-emperor \nTerimakasih.`
-                        client.sendFileFromUrl(from, thumbnail, 'videos.jpg', caption)
-                    } catch (err) {
-                        client.reply(from, 'Error, ' + err, id)
-                    }
-                })
-                .catch((err) => {
-                    client.reply(from, `Error, url tidak valid atau tidak memuat video \n\n${err}`, id)
-                })
+        /* eslint-disable prefer-promise-reject-errors */
+const { getVideoMeta } = require('tiktok-scraper')
+const { fetchJson } = require('../utils/fetcher')
+const { promisify } = require('util')
+const { instagram, twitter } = require('video-url-link')
+
+const igGetInfo = promisify(instagram.getInfo)
+const twtGetInfo = promisify(twitter.getInfo)
+
+/**
+ * Get Tiktok Metadata
+ *
+ * @param  {String} url
+ */
+case'tiktok': 
+const tiktok = (url) => new Promise((resolve, reject) => {
+    console.log('Get metadata from =>', url)
+    getVideoMeta(url, { noWaterMark: true, hdVideo: true })
+        .then(async (result) => {
+            console.log('Get Video From', '@' + result.authorMeta.name, 'ID:', result.id)
+            if (result.videoUrlNoWaterMark) {
+                result.url = result.videoUrlNoWaterMark
+                result.NoWaterMark = true
+            } else {
+                result.url = result.videoUrl
+                result.NoWaterMark = false
+            }
+            resolve(result)
+        }).catch((err) => {
+            console.error(err)
+            reject(err)
+        })
+})
+
+/**
+ * Get Instagram Metadata
+ *
+ * @param  {String} url
+ */
+case 'ig' :
+const insta = (url) => new Promise((resolve, reject) => {
+    console.log('Get metadata from =>', url)
+    const uri = url.replace(/\?.*$/g, '')
+    igGetInfo(uri, {})
+        .then((result) => resolve(result))
+        .catch((err) => {
+            console.error(err)
+            reject(err)
+        })
+})
+
+/**
+ * Get Twitter Metadata
+ *
+ * @param  {String} url
+ */
+case 'twt' :
+const tweet = (url) => new Promise((resolve, reject) => {
+    console.log('Get metadata from =>', url)
+    twtGetInfo(url, {})
+        .then((content) => resolve(content))
+        .catch((err) => {
+            console.error(err)
+            reject(err)
+        })
+})
+
+/**
+ * Get Facebook Metadata
+ *
+ * @param  {String} url
+ */
+case 'fb' :
+const facebook = (url) => new Promise((resolve, reject) => {
+    console.log('Get metadata from =>', url)
+    const apikey = '3tgDBIOPAPl62b0zuaWNYog2wvRrc4V414AjMi5zdHbU4a'
+    fetchJson('http://keepsaveit.com/api/?api_key=' + apikey + '&url=' + url, { method: 'GET' })
+        .then((result) => {
+            const key = result.code
+            switch (key) {
+            case 212:
+                return reject('Access block for you, You have reached maximum 5 limit per minute hits, please stop extra hits.')
+            case 101:
+                return reject('API Key error : Your access key is wrong')
+            case 102:
+                return reject('Your Account is not activated.')
+            case 103:
+                return reject('Your account is suspend for some resons.')
+            case 104:
+                return reject('API Key error : You have not set your api_key in parameters.')
+            case 111:
+                return reject('Full access is not allow with DEMO API key.')
+            case 112:
+                return reject('Sorry, Something wrong, or an invalid link. Please try again or check your url.')
+            case 113:
+                return reject('Sorry this website is not supported.')
+            case 404:
+                return reject('The link you followed may be broken, or the page may have been removed.')
+            case 405:
+                return reject('You can\'t download media in private profile. Looks like the video you want to download is private and it is not accessible from our server.')
+            default:
+                return resolve(result)
+            }
+        }).catch((err) => {
+            console.error(err)
+            reject(err)
+        })
+})
+
+module.exports = {
+    tiktok,
+    insta,
+    tweet,
+    facebook
+}
         }
             break
         case 'mim':
